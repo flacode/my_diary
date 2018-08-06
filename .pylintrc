@@ -1,0 +1,8 @@
+[pre-commit-hook]
+command = find . -iname "*.py" | xargs pylint --load-plugins pylint_django
+
+[MASTER]
+ignore=tests.py, urls.py, migrations, manage.py
+
+[MESSAGES CONTROL]
+:C0111: *Missing docstring*
