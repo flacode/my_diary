@@ -1,0 +1,6 @@
+**/__pycache__/
+.vscode/
+.coverage
+/tests/coverage/*
+.DS_Store
+htmlcov/*
