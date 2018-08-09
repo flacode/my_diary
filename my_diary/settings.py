@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 
 import os
 import dj_database_url
+import warnings
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,7 +22,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'm)y+4s1m^x@10gbs)$0ue2u(0i%jf0u&4-c(mifql8@zbw8g97'
+SECRET_KEY = os.environ.get('SECRET_KEY', None)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -40,7 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'diary.apps.DiaryConfig',
-    'coverage'
+    'coverage',
+    'bootstrap3'
 ]
 
 MIDDLEWARE = [
@@ -86,7 +88,7 @@ DATABASES = {
 if os.environ.get('DATABASE_URL', None):
     DATABASES['default'] = dj_database_url.config()
 else:
-    print("ERROR: You need to configure a DATABASE_URL environment variable.")
+    warnings.warn("ERROR: You need to configure a DATABASE_URL environment variable.")
 
 
 # Password validation
@@ -126,3 +128,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+AUTH_USER_MODEL = 'diary.User'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+    )
+}
+
+# email configurations
+EMAIL_HOST = os.environ.get('EMAIL_HOST', None)
+EMAIL_PORT = os.environ.get('EMAIL_PORT', None)
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', None)
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', None)
+EMAIL_USE_SSL = os.environ.get('EMAIL_HOST', None)
+
+SITE_ROOT = "http://localhost:8000"

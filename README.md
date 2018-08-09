@@ -27,9 +27,21 @@ pass
       $ psql postgres;
       $ CREATE DATABASE database_name;
    ```
-   - Store the database name under an environment variable called `DATABASE_URL` in the following format.
+3. Set the required environment variables.
+    - Add a configuration file called `config.txt` where you will set the enviromnent variables.
+        ```export SECRET_KEY='secret key'
+            export DATABASE_URL='postgres://USER:PASSWORD@HOST:PORT/NAME'
+            export EMAIL_HOST='email host'
+            export EMAIL_PORT=465
+            export EMAIL_HOST_USER='email host user'
+            export EMAIL_HOST_PASSWORD='email host '
+            export EMAIL_USE_TLS=True
+        ```
+
+
+   - Set these environment variables using the following command.
    ```sh
-      $ export DATABASE_URL='postgres://USER:PASSWORD@HOST:PORT/NAME'
+      $ source ./config.txt
    ```
 
 3. Switch to the project's root directory and run migrations to create database tables.
