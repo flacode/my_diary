@@ -4,3 +4,4 @@
 /tests/coverage/*
 .DS_Store
 htmlcov/*
+config.txt
