@@ -1,12 +1,14 @@
 from smtplib import SMTPException
 from rest_framework import serializers
 from django.utils.text import slugify
+from django.contrib.auth import authenticate
+from rest_framework_jwt.settings import api_settings
 from .helpers import send_email
-from .exceptions import EmailNotSentException, AccountNotFoundException
+from .exceptions import EmailNotSentException, AccountNotFoundException, InvalidCredentialsException
 from .models import User
 
 
-class AuthenticationModelsSerializer(serializers.ModelSerializer):
+class AuthenticationModelSerializer(serializers.ModelSerializer):
     """Base class with validations for ModelSerializers."""
     def validate_password(self, value):
         if len(value) < 8:
@@ -19,17 +21,7 @@ class AuthenticationModelsSerializer(serializers.ModelSerializer):
         return data
 
 
-class AuthenticationSerializer(serializers.Serializer):
-    """Base class with validations for Serializers."""
-    def validate_email(self, value):
-        try:
-            User.objects.get(email=value)
-            return value
-        except User.DoesNotExist:
-            raise AccountNotFoundException
-
-
-class UserSignupSerializer(AuthenticationModelsSerializer):
+class UserSignupSerializer(AuthenticationModelSerializer):
     """Serializer for user sign up"""
     confirm_password = serializers.CharField(write_only=True)
 
@@ -55,20 +47,49 @@ class UserSignupSerializer(AuthenticationModelsSerializer):
             raise EmailNotSentException
 
 
-class UserLoginSerializer(AuthenticationSerializer):
+class UserLoginSerializer(serializers.ModelSerializer):
     """Serializer for user login."""
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ('email', 'password')
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    def validate_email(self, value):
+        try:
+            user = User.objects.get(email=value)
+            if user.is_active:
+                return value
+            raise serializers.ValidationError("User account is not yet activated, "
+                                              "please check your email for activation "
+                                              "instructions.")
+        except User.DoesNotExist:
+            raise AccountNotFoundException
 
     def validate(self, data):
-        user = User.objects.get(email=data['email'])
-        if user.is_active:
-            return user
-        raise serializers.ValidationError("User account is not yet activated, "
-                                          "please check your email for activation instructions.")
+        credentials = {
+            'email': data['email'],
+            'password': data['password']
+        }
+        user = authenticate(**credentials)
+        if user:
+            jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
+            jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+            payload = jwt_payload_handler(user)
+            token = jwt_encode_handler(payload)
+            user.login()
+            return {
+                'slug_field': user.slug_field,
+                'email': user.email,
+                'token': token,
+            }
+        raise InvalidCredentialsException
 
 
-class PasswordResetRequestSerializer(AuthenticationSerializer):
+class PasswordResetRequestSerializer(serializers.Serializer):
     """Serialiser to request for password reset using email or username"""
     email = serializers.EmailField(required=False)
     username = serializers.CharField(required=False)
@@ -81,9 +102,16 @@ class PasswordResetRequestSerializer(AuthenticationSerializer):
         except User.DoesNotExist:
             raise AccountNotFoundException
 
+    def validate_email(self, value):
+        try:
+            User.objects.get(email=value)
+            return value
+        except User.DoesNotExist:
+            raise AccountNotFoundException
 
-class PasswordResetHandlerSerializer(AuthenticationModelsSerializer):
-    """SSerialiser to handle for password reset for a user"""
+
+class PasswordResetHandlerSerializer(AuthenticationModelSerializer):
+    """Serialiser to handle for password reset for a user"""
     username = serializers.ReadOnlyField()
     confirm_password = serializers.CharField(write_only=True)
 
