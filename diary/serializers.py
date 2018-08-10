@@ -2,7 +2,7 @@ from smtplib import SMTPException
 from rest_framework import serializers
 from django.utils.text import slugify
 from .helpers import send_email
-from .exceptions import EmailNotSentException
+from .exceptions import EmailNotSentException, AccountNotFoundException
 from .models import User
 
 
@@ -33,10 +33,30 @@ class UserSignupSerializer(serializers.ModelSerializer):
             email=validated_data['email']
             )
         user.set_password(validated_data['password'])
-        user.slug_field = slugify(user.username)
+        user.slug_field = slugify(user.username, allow_unicode=True)
         try:
             send_email(user)
             user.save()
             return user
-        except SMTPException as error:
-            raise EmailNotSentException(error.smtp_error)
+        except SMTPException:
+            raise EmailNotSentException
+
+
+class UserLoginSerializer(serializers.Serializer):
+    """Serializer for user login."""
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate_email(self, value):
+        try:
+            User.objects.get(email=value)
+            return value
+        except User.DoesNotExist:
+            raise AccountNotFoundException
+
+    def validate(self, data):
+        user = User.objects.get(email=data['email'])
+        if user.is_active:
+            return user
+        raise serializers.ValidationError("User account is not yet activated, "
+                                          "please check your email for activation instructions.")

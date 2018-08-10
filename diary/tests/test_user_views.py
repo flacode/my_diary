@@ -1,14 +1,15 @@
 from django.test import TransactionTestCase
 from django.urls import reverse
+from django.utils.text import slugify
 from django.core import mail
 from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.serializers import ValidationError
 from diary.models import User
+from diary.exceptions import AccountNotFoundException
 
 
-class UserRegistrationTestCase(TransactionTestCase):
-    reset_sequences = True
-
+class BaseUserTestCase(TransactionTestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = {
@@ -17,6 +18,17 @@ class UserRegistrationTestCase(TransactionTestCase):
             'password': 'password',
             'confirm_password': 'password'
         }
+        self.user2 = {
+            'username': 'username',
+            'email': 'email@email.com',
+            'password': 'password',
+            'slug_field': slugify('username'),
+            'is_active': True
+        }
+
+
+class UserRegistrationTestCase(BaseUserTestCase):
+    reset_sequences = True
 
     def test_user_registration_creates_user_object(self):
         users_before = User.objects.all().count()
@@ -46,17 +58,8 @@ class UserRegistrationTestCase(TransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-class UserAccountActivationTestCase(TransactionTestCase):
+class UserAccountActivationTestCase(BaseUserTestCase):
     reset_sequences = True
-
-    def setUp(self):
-        self.client = APIClient()
-        self.user = {
-            'username': 'username',
-            'email': 'email@email.com',
-            'password': 'password',
-            'confirm_password': 'password'
-        }
 
     def test_user_account_activation(self):
         self.client.post(reverse('diary:signup'), data=self.user)
@@ -78,3 +81,52 @@ class UserAccountActivationTestCase(TransactionTestCase):
             {'token': 'hjhgedgvgdgwegghegvghv'}
             )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class UserLoginTestCase(BaseUserTestCase):
+    reset_sequences = True
+
+    def test_user_login(self):
+        User.objects.create_user(**self.user2)
+        response = self.client.post(reverse('diary:login'), data={
+            'email': self.user2['email'],
+            'password': self.user2['password']
+            })
+        self.assertContains(response, 'token')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_login_without_activating_account(self):
+        self.client.post(reverse('diary:signup'), data=self.user)
+        self.client.post(reverse('diary:login'), data={
+            'email': self.user['email'],
+            'password': self.user['password']
+            })
+        self.assertRaises(ValidationError)
+
+    def test_user_login_when_not_registered(self):
+        self.client.post(reverse('diary:login'), data={
+            'email': self.user['email'],
+            'password': self.user['password']
+            })
+        self.assertRaises(AccountNotFoundException)
+
+    def test_user_login_with_wrong_password(self):
+        User.objects.create_user(**self.user2)
+        response = self.client.post(reverse('diary:login'), data={
+            'email': self.user2['email'],
+            'password': 'password123'
+            })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_login_without_email(self):
+        response = self.client.post(reverse('diary:login'), data={
+            'password': 'passwords'
+            })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_user_login_without_password(self):
+        self.client.post(reverse('diary:signup'), data=self.user)
+        response = self.client.post(reverse('diary:login'), data={
+            'email': self.user['email']
+            })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

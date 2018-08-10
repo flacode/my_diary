@@ -1,11 +1,12 @@
 from django.urls import reverse
 from django.conf import settings
+from django.contrib.auth import authenticate
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
 from .models import User
-from .serializers import UserSignupSerializer
+from .serializers import UserSignupSerializer, UserLoginSerializer
 from .tokens import ACTIVATIONTOKEN
 
 
@@ -19,7 +20,7 @@ class UserSignUp(generics.CreateAPIView):
         self.perform_create(serializer)
         result = {
             'user': serializer.data,
-            'message': "Successfully registered, please check your email to activate your account."
+            'detail': "Successfully registered, please check your email to activate your account."
         }
         return Response(result, status=status.HTTP_201_CREATED)
 
@@ -44,6 +45,27 @@ class ActivateAccount(APIView):
             return Response(result, status=status_code)
         except User.DoesNotExist:
             result = {
-                'message': "User account does not exist"
+                'detail': "User account does not exist"
             }
             return Response(result, status=status.HTTP_404_NOT_FOUND)
+
+
+class LoginUser(generics.GenericAPIView):
+
+    serializer_class = UserLoginSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        credentials = {
+            'email': request.data['email'],
+            'password': request.data['password']
+        }
+        user = authenticate(request, **credentials)
+        if user:
+            response_data = {
+                'token': user.generate_token,
+                'user': UserSignupSerializer(user, context={'request': request}).data
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+        return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
