@@ -12,3 +12,9 @@ class AccountNotFoundException(APIException):
     status_code = 404
     default_detail = 'User account not found, please first register'
     default_code = 'not found'
+
+
+class InvalidCredentialsException(APIException):
+    status_code = 401
+    default_detail = 'Invalid uder credentials'
+    default_code = 'unauthorised'
