@@ -1,16 +1,17 @@
 from smtplib import SMTPException
 from django.urls import reverse
 from django.conf import settings
-from django.contrib.auth import authenticate
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework_jwt.serializers import serializers
 from .models import User
 from .tokens import ACTIVATIONTOKEN, PASSWORDRESETTOKEN
 from .exceptions import EmailNotSentException
 from .helpers import send_password_reset_email
 from . import serializers
+from .permissions import IsAuthenticatedAndIsLoggedIn
 
 
 class UserSignUp(generics.CreateAPIView):
@@ -60,18 +61,7 @@ class LoginUser(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        credentials = {
-            'email': request.data['email'],
-            'password': request.data['password']
-        }
-        user = authenticate(request, **credentials)
-        if user:
-            response_data = {
-                'token': user.generate_token,
-                'user': serializers.UserSignupSerializer(user, context={'request': request}).data
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
-        return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
 class PasswordResetRequest(generics.GenericAPIView):
@@ -114,3 +104,14 @@ class PasswordResetHandler(generics.UpdateAPIView):
             return Response(response, status=status.HTTP_200_OK)
         message = 'Password reset link has expired, please request for a new one.'
         return Response({'detail': message}, status=status.HTTP_409_CONFLICT)
+
+
+class UserLogout(generics.GenericAPIView):
+    permission_classes = (IsAuthenticatedAndIsLoggedIn,)
+
+    def get(self, request, slug_field=None):
+        request.user.logout()
+        return Response(
+            {'detail': 'You have successfully logged out.'},
+            status=status.HTTP_200_OK
+            )
