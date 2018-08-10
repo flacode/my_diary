@@ -6,17 +6,8 @@ from .exceptions import EmailNotSentException, AccountNotFoundException
 from .models import User
 
 
-class UserSignupSerializer(serializers.ModelSerializer):
-    """Serializer for user sign up"""
-    confirm_password = serializers.CharField(write_only=True)
-
-    class Meta:
-        model = User
-        fields = ('username', 'email', 'password', 'confirm_password')
-        extra_kwargs = {
-            'password': {'write_only': True}
-        }
-
+class AuthenticationModelsSerializer(serializers.ModelSerializer):
+    """Base class with validations for ModelSerializers."""
     def validate_password(self, value):
         if len(value) < 8:
             raise serializers.ValidationError("Password should have more than 8 characters")
@@ -26,6 +17,28 @@ class UserSignupSerializer(serializers.ModelSerializer):
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError("Passwords do not match")
         return data
+
+
+class AuthenticationSerializer(serializers.Serializer):
+    """Base class with validations for Serializers."""
+    def validate_email(self, value):
+        try:
+            User.objects.get(email=value)
+            return value
+        except User.DoesNotExist:
+            raise AccountNotFoundException
+
+
+class UserSignupSerializer(AuthenticationModelsSerializer):
+    """Serializer for user sign up"""
+    confirm_password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password', 'confirm_password')
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
 
     def create(self, validated_data):
         user = User(
@@ -42,17 +55,10 @@ class UserSignupSerializer(serializers.ModelSerializer):
             raise EmailNotSentException
 
 
-class UserLoginSerializer(serializers.Serializer):
+class UserLoginSerializer(AuthenticationSerializer):
     """Serializer for user login."""
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
-
-    def validate_email(self, value):
-        try:
-            User.objects.get(email=value)
-            return value
-        except User.DoesNotExist:
-            raise AccountNotFoundException
 
     def validate(self, data):
         user = User.objects.get(email=data['email'])
@@ -60,3 +66,35 @@ class UserLoginSerializer(serializers.Serializer):
             return user
         raise serializers.ValidationError("User account is not yet activated, "
                                           "please check your email for activation instructions.")
+
+
+class PasswordResetRequestSerializer(AuthenticationSerializer):
+    """Serialiser to request for password reset using email or username"""
+    email = serializers.EmailField(required=False)
+    username = serializers.CharField(required=False)
+    user = None
+
+    def validate_username(self, value):
+        try:
+            User.objects.get(username=value)
+            return value
+        except User.DoesNotExist:
+            raise AccountNotFoundException
+
+
+class PasswordResetHandlerSerializer(AuthenticationModelsSerializer):
+    """SSerialiser to handle for password reset for a user"""
+    username = serializers.ReadOnlyField()
+    confirm_password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ('username', 'password', 'confirm_password')
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    def update(self, instance, validated_data):
+        instance.set_password(validated_data['password'])
+        instance.save()
+        return instance
