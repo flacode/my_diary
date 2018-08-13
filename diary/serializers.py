@@ -1,7 +1,8 @@
 from smtplib import SMTPException
 from rest_framework import serializers
 from django.utils.text import slugify
-from .helpers import send_email, EmailNotSentException
+from .helpers import send_email
+from .exceptions import EmailNotSentException
 from .models import User
 
 

@@ -1,9 +1,11 @@
+# from django.urls import reverse
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
 from .models import User
 from .serializers import UserSignupSerializer
+from .tokens import ACTIVATIONTOKEN
 
 
 class UserSignUp(generics.CreateAPIView):
@@ -22,17 +24,24 @@ class UserSignUp(generics.CreateAPIView):
 
 
 class ActivateAccount(APIView):
-    def get(self, request):
+    def get(self, request, slug_field=None):
         token = request.GET.get('token')
         try:
-            user = User.objects.get(slug_field=token)
-            user.is_active = True
-            user.save()
+            user = User.objects.get(slug_field=slug_field)
+            # print(ACTIVATIONTOKEN.check_token(user, token))
+            if ACTIVATIONTOKEN.check_token(user, token):
+                user.is_active = True
+                user.save()
+                message = "You account has been activated. Please login."
+                status_code = status.HTTP_202_ACCEPTED
+            else:
+                message = "Your account is already activated, Please login."
+                status_code = status.HTTP_409_CONFLICT
             result = {
-                'url': 'login url',
-                'message': "You account has been activated. Please login."
+                'message': message,
+                # 'login_url': reverse('diary:login'),
             }
-            return Response(result, status=status.HTTP_202_ACCEPTED)
+            return Response(result, status=status_code)
         except User.DoesNotExist:
             result = {
                 'message': "User account does not exist"
