@@ -2,19 +2,13 @@ from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.conf import settings
-from rest_framework.exceptions import APIException
-
-
-class EmailNotSentException(APIException):
-    """ Exception thrown when the confirmation email can not be sent """
-    status_code = 503
-    default_detail = 'Service temporarily unavailable, try again later.'
-    default_code = 'not_registered'
+from .tokens import ACTIVATIONTOKEN
 
 
 def send_email(user):
-    path = reverse('diary:activate')
-    activation_url = "{}{}?token={}".format(settings.SITE_ROOT, path, user.slug_field)
+    path = reverse('diary:activate', kwargs={'slug_field': user.slug_field})
+    token = ACTIVATIONTOKEN.make_token(user)
+    activation_url = "{}{}?token={}".format(settings.SITE_ROOT, path, token)
     html_message = render_to_string(
         'diary/activate.html',
         {
