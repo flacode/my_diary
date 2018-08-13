@@ -1,4 +1,5 @@
-# from django.urls import reverse
+from django.urls import reverse
+from django.conf import settings
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework import status
@@ -38,7 +39,7 @@ class ActivateAccount(APIView):
                 status_code = status.HTTP_409_CONFLICT
             result = {
                 'message': message,
-                # 'login_url': reverse('diary:login'),
+                'login_url': settings.SITE_ROOT + reverse('diary:login'),
             }
             return Response(result, status=status_code)
         except User.DoesNotExist:
