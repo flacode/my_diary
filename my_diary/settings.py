@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'diary.apps.DiaryConfig',
     'coverage',
+    'django_celery_beat',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
@@ -151,3 +153,11 @@ REST_FRAMEWORK = {
 }
 
 JWT_EXPIRATION_DELTA = datetime.timedelta(minutes=60)
+
+
+CELERY_BROKER_URL = 'redis://localhost:6379'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
