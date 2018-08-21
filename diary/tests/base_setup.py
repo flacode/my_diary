@@ -22,6 +22,22 @@ class BaseUserTestCase(TransactionTestCase):
             'slug_field': slugify('username'),
             'is_active': True
         }
+        self.user1 = {
+            'username': 'username1',
+            'email': 'email1@email.com',
+            'password': 'password',
+            'slug_field': slugify('username1'),
+            'is_active': True,
+            'is_logged_in': True
+        }
+        self.entry = {
+            'title': 'entry 1',
+            'content': 'content for entry 1'
+        }
+        self.entry2 = {
+            'title': 'entry 2',
+            'content': 'content for entry 2'
+        }
 
     def get_password_url(self):
         User.objects.create_user(**self.user2)
@@ -29,3 +45,11 @@ class BaseUserTestCase(TransactionTestCase):
             'email': self.user2['email'],
             })
         return mail.outbox[0].body.split(' ')[-1]
+
+    def get_token(self):
+        User.objects.create_user(**self.user2)
+        login = self.client.post(reverse('diary:login'), data={
+            'email': self.user2['email'],
+            'password': self.user2['password']
+        })
+        self.client.credentials(HTTP_AUTHORIZATION='JWT ' + login.data['token'])

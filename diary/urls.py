@@ -13,5 +13,6 @@ urlpatterns = [
         views.PasswordResetHandler.as_view(),
         name='password-rest-handler'
         ),
-    path('<str:slug_field>/logout/', views.UserLogout.as_view(), name='logout')
+    path('<str:slug_field>/logout/', views.UserLogout.as_view(), name='logout'),
+    path('entries/', views.EntryCreateAPIView.as_view(), name='create-list'),
 ]
