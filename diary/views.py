@@ -147,7 +147,7 @@ class EntryCreateListAPIView(generics.ListCreateAPIView):
         return Entry.objects.filter(owner=self.request.user).order_by('created')
 
 
-class EntryAPIView(generics.RetrieveUpdateAPIView):
+class EntryAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = serializers.EntrySerializer
     lookup_field = 'slug_field'
