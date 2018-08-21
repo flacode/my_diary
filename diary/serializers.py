@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate
 from rest_framework_jwt.settings import api_settings
 from .helpers import send_email
 from .exceptions import EmailNotSentException, AccountNotFoundException, InvalidCredentialsException
-from .models import User
+from .models import User, Entry
 
 
 class AuthenticationModelSerializer(serializers.ModelSerializer):
@@ -126,3 +126,12 @@ class PasswordResetHandlerSerializer(AuthenticationModelSerializer):
         instance.set_password(validated_data['password'])
         instance.save()
         return instance
+
+
+class EntrySerializer(serializers.ModelSerializer):
+    owner = serializers.ReadOnlyField(source='owner.username')
+
+    class Meta:
+        model = Entry
+        fields = ('title', 'content', 'owner', 'created', 'modified')
+        read_only_fields = ('created', 'modified')

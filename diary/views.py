@@ -5,8 +5,7 @@ from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework_jwt.serializers import serializers
-from .models import User
+from .models import User, Entry
 from .tokens import ACTIVATIONTOKEN, PASSWORDRESETTOKEN
 from .exceptions import EmailNotSentException
 from .helpers import send_password_reset_email
@@ -115,3 +114,30 @@ class UserLogout(generics.GenericAPIView):
             {'detail': 'You have successfully logged out.'},
             status=status.HTTP_200_OK
             )
+
+
+class EntryCreateAPIView(generics.CreateAPIView):
+    permission_classes = (IsAuthenticatedAndIsLoggedIn,)
+    serializer_class = serializers.EntrySerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        entries = Entry.objects.filter(
+            title__iexact=serializer.validated_data['title'],
+            owner=self.request.user)
+        for entry in entries:
+            if entry.is_modifiable:
+                return Response(
+                    {'detail': 'An entry with the same title has already been entered today.'},
+                    status=status.HTTP_409_CONFLICT
+                    )
+        self.perform_create(serializer)
+        result = {
+            'entry': serializer.data,
+            'detail': "Diary entry successfully saved."
+        }
+        return Response(result, status=status.HTTP_201_CREATED)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
