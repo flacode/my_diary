@@ -4,6 +4,7 @@ from django.conf import settings
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import User, Entry
 from .tokens import ACTIVATIONTOKEN, PASSWORDRESETTOKEN
@@ -116,7 +117,7 @@ class UserLogout(generics.GenericAPIView):
             )
 
 
-class EntryCreateAPIView(generics.CreateAPIView):
+class EntryCreateListAPIView(generics.ListCreateAPIView):
     permission_classes = (IsAuthenticatedAndIsLoggedIn,)
     serializer_class = serializers.EntrySerializer
 
@@ -141,3 +142,15 @@ class EntryCreateAPIView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def get_queryset(self):
+        return Entry.objects.filter(owner=self.request.user).order_by('created')
+
+
+class EntryAPIView(generics.RetrieveAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = serializers.EntrySerializer
+    lookup_field = 'slug_field'
+
+    def get_queryset(self):
+        return Entry.objects.filter(owner=self.request.user).order_by('created')
