@@ -16,5 +16,11 @@ class AccountNotFoundException(APIException):
 
 class InvalidCredentialsException(APIException):
     status_code = 401
-    default_detail = 'Invalid uder credentials'
+    default_detail = 'Invalid user credentials'
     default_code = 'unauthorised'
+
+
+class CanNotModifyEntryException(APIException):
+    status_code = 400
+    default_detail = 'Entry can not only be modified on the day it was created.'
+    default_code = 'bad request'
