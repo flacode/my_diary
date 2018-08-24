@@ -1,7 +1,9 @@
+import json
 from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.conf import settings
+from django_celery_beat.models import PeriodicTask, CrontabSchedule
 from .tokens import ACTIVATIONTOKEN, PASSWORDRESETTOKEN
 
 
@@ -50,3 +52,42 @@ def send_password_reset_email(user):
         [user.email])
     message.attach_alternative(html_message, "text/html")
     message.send()
+
+
+def schedule_crontab(time):
+    hours, minutes, _ = time.split(':')
+    schedule, _ = CrontabSchedule.objects.get_or_create(
+        minute=minutes,
+        hour=hours,
+        day_of_week='*',
+        day_of_month='*',
+        month_of_year='*',
+        )
+    return schedule
+
+
+def create_periodic_task(user, time):
+    periodic_task, _ = PeriodicTask.objects.get_or_create(
+        name='Sending notification reminder to {}'.format(user.username)
+        )
+    schedule = schedule_crontab(time)
+    periodic_task.crontab = schedule
+    periodic_task.task = 'diary.tasks.notification_email'
+    periodic_task.kwargs = json.dumps({
+        "username": user.username,
+        "email": user.email,
+        "time": str(time)
+    })
+    periodic_task.save()
+    return 'Email notifications have been enabled.'
+
+
+def delete_periodic_task(user):
+    try:
+        periodic_task = PeriodicTask.objects.get(
+            name='Sending notification reminder to {}'.format(user.username)
+            )
+        periodic_task.delete()
+    except PeriodicTask.DoesNotExist:
+        pass
+    return 'Email notifications have been disabled.'

@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.utils.text import slugify
 from django.contrib.auth import authenticate
 from rest_framework_jwt.settings import api_settings
-from .helpers import send_email
+from .helpers import send_email, create_periodic_task, delete_periodic_task
 from . import exceptions
 from .models import User, Entry
 
@@ -93,7 +93,6 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     """Serialiser to request for password reset using email or username"""
     email = serializers.EmailField(required=False)
     username = serializers.CharField(required=False)
-    user = None
 
     def validate_username(self, value):
         try:
@@ -143,3 +142,25 @@ class EntrySerializer(serializers.ModelSerializer):
             instance.save()
             return instance
         raise exceptions.CanNotModifyEntryException
+
+
+class NotificationsSerializer(serializers.Serializer):
+    notification_time = serializers.TimeField(
+        format='%H:%M', input_formats=['%H:%M'], required=False
+        )
+    detail = serializers.CharField(read_only=True)
+
+    class Meta:
+        fields = ('notification_time', 'detail')
+
+    def create(self, validated_data):
+        user = self.context['user']
+        time = validated_data.get('notification_time', None)
+        if time:
+            detail = create_periodic_task(user, str(time))
+        else:
+            detail = delete_periodic_task(user)
+        return {
+            'notification_time': time,
+            'detail': detail
+        }

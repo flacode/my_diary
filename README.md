@@ -54,5 +54,17 @@ pass
     $ python manage.py runserver
  ```
 
+### Setting up Celery
+1. Install redis as the broker.
+`brew install redis`
+2. Start redis in a terminal
+`redis-server`
+3. Open another terminal and start the redis worker.
+`celery -A my_diary worker`
+4. Open another terminal and run the beat scheduler.
+`celery -A proj beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler`
+
 ## Tests
-pass
+```sh
+    $ coverage run --source=diary manage.py test && coverage report -m
+```
