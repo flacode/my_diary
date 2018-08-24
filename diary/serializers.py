@@ -4,7 +4,7 @@ from django.utils.text import slugify
 from django.contrib.auth import authenticate
 from rest_framework_jwt.settings import api_settings
 from .helpers import send_email
-from .exceptions import EmailNotSentException, AccountNotFoundException, InvalidCredentialsException
+from . import exceptions
 from .models import User, Entry
 
 
@@ -44,7 +44,7 @@ class UserSignupSerializer(AuthenticationModelSerializer):
             user.save()
             return user
         except SMTPException:
-            raise EmailNotSentException
+            raise exceptions.EmailNotSentException
 
 
 class UserLoginSerializer(serializers.ModelSerializer):
@@ -67,7 +67,7 @@ class UserLoginSerializer(serializers.ModelSerializer):
                                               "please check your email for activation "
                                               "instructions.")
         except User.DoesNotExist:
-            raise AccountNotFoundException
+            raise exceptions.AccountNotFoundException
 
     def validate(self, data):
         credentials = {
@@ -86,7 +86,7 @@ class UserLoginSerializer(serializers.ModelSerializer):
                 'email': user.email,
                 'token': token,
             }
-        raise InvalidCredentialsException
+        raise exceptions.InvalidCredentialsException
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
@@ -100,14 +100,14 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             User.objects.get(username=value)
             return value
         except User.DoesNotExist:
-            raise AccountNotFoundException
+            raise exceptions.AccountNotFoundException
 
     def validate_email(self, value):
         try:
             User.objects.get(email=value)
             return value
         except User.DoesNotExist:
-            raise AccountNotFoundException
+            raise exceptions.AccountNotFoundException
 
 
 class PasswordResetHandlerSerializer(AuthenticationModelSerializer):
@@ -135,3 +135,11 @@ class EntrySerializer(serializers.ModelSerializer):
         model = Entry
         fields = ('title', 'content', 'owner', 'created', 'modified')
         read_only_fields = ('created', 'modified')
+
+    def update(self, instance, validated_data):
+        if instance.is_modifiable:
+            instance.title = validated_data.get('title', instance.title)
+            instance.content = validated_data.get('content', instance.title)
+            instance.save()
+            return instance
+        raise exceptions.CanNotModifyEntryException
