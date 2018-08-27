@@ -1,15 +1,15 @@
 from smtplib import SMTPException
 from django.urls import reverse
+from django.shortcuts import get_object_or_404
 from django.conf import settings
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import User, Entry
 from .tokens import ACTIVATIONTOKEN, PASSWORDRESETTOKEN
-from .exceptions import EmailNotSentException
-from .helpers import send_password_reset_email
+from .exceptions import EmailNotSentException, InvalidCredentialsException
+from .helpers import send_password_reset_email, generate_token
 from . import serializers
 from .permissions import IsAuthenticatedAndIsLoggedIn
 
@@ -148,9 +148,25 @@ class EntryCreateListAPIView(generics.ListCreateAPIView):
 
 
 class EntryAPIView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticatedAndIsLoggedIn,)
     serializer_class = serializers.EntrySerializer
     lookup_field = 'slug_field'
 
     def get_queryset(self):
         return Entry.objects.filter(owner=self.request.user).order_by('created')
+
+
+class SocialLogin(generics.GenericAPIView):
+    def get(self, request, *args, **kwargs):
+        user_id = request.session.get('_auth_user_id')
+        if user_id:
+            user = get_object_or_404(User, pk=user_id)
+            token = generate_token(user)
+            user.login()
+            response_data = {
+                'slug_field': user.slug_field,
+                'email': user.email,
+                'token': token,
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+        raise InvalidCredentialsException

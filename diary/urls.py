@@ -15,5 +15,6 @@ urlpatterns = [
         ),
     path('<str:slug_field>/logout/', views.UserLogout.as_view(), name='logout'),
     path('entries/', views.EntryCreateListAPIView.as_view(), name='create-list'),
-    path('entries/<str:slug_field>/', views.EntryAPIView.as_view(), name='details')
+    path('entries/<str:slug_field>/', views.EntryAPIView.as_view(), name='details'),
+    path('auth/login/social/', views.SocialLogin.as_view(), name='social-login')
 ]

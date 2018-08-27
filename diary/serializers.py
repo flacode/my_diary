@@ -2,8 +2,8 @@ from smtplib import SMTPException
 from rest_framework import serializers
 from django.utils.text import slugify
 from django.contrib.auth import authenticate
-from rest_framework_jwt.settings import api_settings
 from .helpers import send_email
+from .helpers import generate_token
 from . import exceptions
 from .models import User, Entry
 
@@ -38,10 +38,9 @@ class UserSignupSerializer(AuthenticationModelSerializer):
             email=validated_data['email']
             )
         user.set_password(validated_data['password'])
-        user.slug_field = slugify(user.username, allow_unicode=True)
         try:
-            send_email(user)
             user.save()
+            send_email(user)
             return user
         except SMTPException:
             raise exceptions.EmailNotSentException
@@ -76,10 +75,7 @@ class UserLoginSerializer(serializers.ModelSerializer):
         }
         user = authenticate(**credentials)
         if user:
-            jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
-            jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
-            payload = jwt_payload_handler(user)
-            token = jwt_encode_handler(payload)
+            token = generate_token(user)
             user.login()
             return {
                 'slug_field': user.slug_field,
@@ -133,8 +129,8 @@ class EntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Entry
-        fields = ('title', 'content', 'owner', 'created', 'modified')
-        read_only_fields = ('created', 'modified')
+        fields = ('title', 'content', 'owner', 'created', 'modified', 'slug_field')
+        read_only_fields = ('created', 'modified', 'slug_field')
 
     def update(self, instance, validated_data):
         if instance.is_modifiable:

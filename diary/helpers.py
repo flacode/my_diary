@@ -2,6 +2,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.conf import settings
+from rest_framework_jwt.settings import api_settings
 from .tokens import ACTIVATIONTOKEN, PASSWORDRESETTOKEN
 
 
@@ -50,3 +51,15 @@ def send_password_reset_email(user):
         [user.email])
     message.attach_alternative(html_message, "text/html")
     message.send()
+
+
+def activate_social_user(user, *args, **kwargs):
+    user.is_active = True
+    user.save()
+
+
+def generate_token(user):
+    jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
+    jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+    payload = jwt_payload_handler(user)
+    return jwt_encode_handler(payload)
