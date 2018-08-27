@@ -36,6 +36,8 @@ pass
             export EMAIL_HOST_USER='email host user'
             export EMAIL_HOST_PASSWORD='email host '
             export EMAIL_USE_TLS=True
+            export SOCIAL_AUTH_GOOGLE_OAUTH2_KEY='key'
+            export SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET='secret'
         ```
 
 

@@ -9,7 +9,6 @@ from django.contrib.auth.models import AbstractUser
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     is_active = models.BooleanField(default=False)
-    notification_time = models.TimeField(null=True, blank=True)
     slug_field = models.SlugField(unique=True)
     is_logged_in = models.BooleanField(default=False)
 
@@ -26,6 +25,10 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+    def save(self, *args, **kwargs):
+        self.slug_field = slugify(self.username, allow_unicode=True)
+        super(User, self).save(*args, **kwargs)
 
 
 class Entry(models.Model):
